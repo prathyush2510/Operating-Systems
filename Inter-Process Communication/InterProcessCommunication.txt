@@ -1,0 +1,282 @@
+SSN COLLEGE OF ENGINEERING, KALAVAKKAM
+(An Autonomous Institution, Affiliated to Anna University, Chennai)
+SSN College of Engineering
+Department of Computer Science and Engineering
+UCS1411 – Operating Systems Laboratory
+II Year CSE - B Section ( IV Semester)
+Academic Year 2019-20
+Lab Exercise 5 InterProcess Communications using Shared Memory
+
+Study the following system calls.
+Shared memory - shmget, shmat, shmdt, shmctl
+Additional optional system calls
+Pipe - pipe, mkfifo, mknod, open, read, write, close
+Message Queue – msgget, msgsnd, msgrcv, msgctl
+Aim:
+Develop the following applications that uses interprocess communication concepts using
+shared memory.
+
+1. Develop an application for getting a name in parent and convert it into uppercase in child using shared memory.
+
+Code:
+#include <sys/ipc.h>
+# define NULL 0
+#include <sys/shm.h>
+#include <sys/types.h>
+# include<unistd.h>
+# include<stdio.h>
+# include<stdlib.h>
+# include<string.h>
+#include <sys/wait.h>
+#include <stdio_ext.h>
+#include <ctype.h>
+// parent writing a char in shared memory and child reads it and prints it.
+int main()
+{
+	int pid;
+	char *a,*b,c;
+	int id,n,i;
+	char *str;
+	// you can create a shared memory between parent and child here or you can //create inside them separately.
+	
+	id=shmget(111,50,IPC_CREAT | 00666);
+	pid=fork();
+	
+	if(pid>0) //parent
+	{
+		//id=shmget(111,50,IPC_CREAT | 00666);
+		a=shmat(id,NULL,0);
+		printf("enter a string ");
+		char l[20];
+ 		scanf("%s",l);
+		strcpy(a,l);
+		wait(NULL);
+		shmdt(a);
+	}
+	else //child
+	{
+		sleep(4);
+		//id=shmget(111,50,0);
+		b=shmat(id,NULL,0);
+		int i=0;
+		while(b[i]!='\0')
+			b[i]=toupper(b[i++]);
+			
+		printf("\n child: %s\n",b);
+		shmdt(b);
+	}
+		shmctl(id, IPC_RMID,NULL);
+}
+OUTPUT:
+185001112@OSNPL-C7:~$ gcc upper.c -o upper
+185001112@OSNPL-C7:~$ ./upper
+enter a string prathyush
+
+
+ child: PRATHYUSH
+
+2. Develop an client / server application for file transfer using shared memory.
+
+Code:
+server:
+#include <sys/ipc.h>
+# define NULL 0
+#include <sys/shm.h>
+#include <sys/types.h>
+# include<unistd.h>
+# include<stdio.h>
+# include<stdlib.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+# include<ctype.h>
+# include<string.h>
+#include <sys/wait.h>
+#include <stdio_ext.h>
+// parent writing a char in shared memory and child reads it and prints it.
+int main()
+{
+int pid;
+char *a,*b,*y,filename[10];
+int id,n,i,id1,sz,id2;
+FILE *fp;
+printf("Enter the file name : ");
+scanf("%s",filename);
+id=shmget(111,50,IPC_CREAT | 00666);
+id1=shmget(112,50,IPC_CREAT | 00666);
+y=shmat(id1,NULL,0);
+a=shmat(id,NULL,0); 
+fp = fopen(filename,"r");
+fread(a,1,1000,fp);
+y[0]='1';
+
+shmdt(a);
+shmdt(y);
+fclose(fp);
+}
+client:
+#include <sys/ipc.h>
+# define NULL 0
+#include <sys/shm.h>
+#include <sys/types.h>
+# include<unistd.h>
+# include<stdio.h>
+# include<stdlib.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+# include<ctype.h>
+# include<string.h>
+#include <sys/wait.h>
+#include <stdio_ext.h>
+// parent writing a char in shared memory and child reads it and prints it.
+int main()
+{
+int pid;
+char *a,*b,c,*y,filename[10];
+FILE *fd1;
+int id,n,i,id1;
+printf("Enter the file name : ");
+scanf("%s",filename);
+fd1 = fopen(filename,"w+");
+id=shmget(111,50,0);
+id1=shmget(112,50,0);
+y=shmat(id1,NULL,0);
+b=shmat(id,NULL,0);
+while(y[0] != '1')
+{
+}
+b=shmat(id,NULL,0);
+fwrite(b,1,strlen(b),fd1);
+fclose(fd1);
+shmctl(id, IPC_RMID,NULL);
+shmctl(id1, IPC_RMID,NULL);
+
+}
+OUTPUT:
+185001112@OSNPL-C7:~$ cat > f1.txt
+hi this is prathyush
+185001112@OSNPL-C7:~$ ./s1
+Enter the file name : f1.txt
+185001112@OSNPL-C7:~$ ./c1
+Enter the file name : f2.txt
+
+
+
+3. Develop an client/server chat application using shared memory.
+Code:
+server:
+#include<sys/ipc.h>
+#define NULL 0
+#include<sys/shm.h>
+#include<sys/types.h>
+#include<unistd.h>
+#include<stdio.h>
+#include<string.h>
+#include<stdlib.h>
+#include<sys/wait.h>
+int main()
+{
+int id;
+char *a;
+char temp[50],t1[50];
+char s[50];
+strcpy(s,"*");
+id = shmget(115, 50, IPC_CREAT | 00666);
+a = shmat(id, NULL, 0);
+printf("You: ");
+scanf(" %[^\n]",temp);
+strcat(s,temp);
+strcpy(a,s);
+strcpy(s,"*");
+while(1) {
+while(a[0]=='*');
+strcpy(t1,a);
+char *t = strtok(t1,"#");
+printf("Friend: %s\n",t);
+if(strcmp(t,"bye")==0)
+{
+strcpy(temp,"bye");
+printf("You: %s ",temp);
+sleep(5);
+break;
+}
+printf("You: ");
+scanf(" %[^\n]",temp);
+strcat(s,temp);
+strcpy(a,s);
+strcpy(s,"*");
+if(strcmp(temp,"bye")==0)
+{
+sleep(5);
+break;
+}
+}
+printf("Connection Ended!\n");shmdt(a);
+}
+
+client:
+#include<sys/ipc.h>
+#define NULL 0
+#include<sys/shm.h>
+#include<sys/types.h>
+#include<unistd.h>
+#include<stdio.h>
+#include<string.h>
+#include<stdlib.h>
+#include<sys/wait.h>
+int main()
+{
+int id;
+char *a;
+char temp[50],t1[50];
+char s[50];
+strcpy(s,"#");
+id = shmget(115, 50,00666);
+a = shmat(id, NULL, 0);
+strcpy(a,"#");
+while(1) {
+strcpy(s,"#");
+while(a[0]=='#');
+strcpy(t1,a);
+char *t = strtok(t1,"*");
+printf("Friend: %s\n",t);
+if(strcmp(t,"bye")==0)
+{
+strcpy(temp,"bye");
+printf("You: %s ",temp);
+sleep(11);
+break;
+}
+printf("You: ");
+scanf(" %[^\n]",temp);
+strcat(s,temp);
+strcpy(a,s);
+strcpy(s,"#");
+if(strcmp(temp,"bye")==0)
+{
+sleep(5);
+break;
+}
+}
+printf("Connection Ended!\n");
+shmdt(a);
+shmctl(id, IPC_RMID, NULL);
+}
+
+OUTPUT:
+
+185001112@OSNPL-C7:~$ ./fp
+You: hi
+Friend: hello
+You: this is prathyush
+Friend: bye
+185001112@OSNPL-C7:~$ ./sp
+Friend: hi
+You: hello
+Friend: this is prathyush
+You: bye
+Connection Ended!
+
+
+
+
+
